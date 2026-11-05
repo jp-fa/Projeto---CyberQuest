@@ -32,7 +32,6 @@ def limpar_tela():
 
 
 def digitar_texto(texto, cor=RESET, velocidade=None):
- 
   if velocidade is None:
     velocidade = ESTADO_JOGO["velocidade_texto"]
 
@@ -103,7 +102,6 @@ def menu_configuracoes():
 
 
 def menu_investigacao():
-  """Menu secundário para simular a navegação por arquivos de investigação."""
   while True:
     exibir_cabecalho("TERMINAL DE INVESTIGAÇÃO - CAPÍTULO 1")
     print("1. Acessar Logs do Antigo Centro de Dados")
