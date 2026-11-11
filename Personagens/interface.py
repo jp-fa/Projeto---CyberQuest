@@ -1,188 +1,203 @@
-import os
-import sys
-import time
+# =========================================================
+# ARQUIVO: interface.py (Sua Interface Cyberpunk no Tkinter)
+# =========================================================
+import investigacao; print("---> FICHEIRO QUE ESTÁ A SER LIDO:", investigacao.__file__)
 
-VERDE = "\033[92m"
-CIANO = "\033[96m"
-AMARELO = "\033[93m"
-VERMELHO = "\033[91m"
-NEGRITO = "\033[1m"
-RESET = "\033[0m"
+import tkinter as tk
+from tkinter import simpledialog
 
-ESTADO_JOGO = {
-    "velocidade_texto": 0.02,
-    "tempo_restante": 72,
-    "confianca_dante": 50,
-    "pistas": {
-        "Mensagem 03h17": (
-            "Aviso anônimo recebido no terminal: 'O ORÁCULO não falhou.'"
-        ),
-        "Ficheiro Incompleto": (
-            "Contém 3 nomes e coordenadas do antigo centro de dados."
-        ),
-        "Dante Moreau": (
-            "Investigador independente. Informações úteis, intenções incertas."
-        ),
-    },
-}
+# Importando os arquivos dos seus colegas
+import historia
+import investigacao
 
 
-def limpar_tela():
-  os.system("cls" if os.name == "nt" else "clear")
 
+class SistemaNexusGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("SISTEMA OPERACIONAL NEXUS v2.0 // Protocolo ORÁCULO")
+        self.root.geometry("950x650")
+        self.root.configure(bg="#0d1117")
 
-def digitar_texto(texto, cor=RESET, velocidade=None):
-  if velocidade is None:
-    velocidade = ESTADO_JOGO["velocidade_texto"]
+        # Cores do Tema Cyberpunk / Terminal
+        self.cor_bg = "#0d1117"
+        self.cor_card = "#161b22"
+        self.cor_texto = "#58a6ff"      # Ciano
+        self.cor_destaque = "#3fb950"   # Verde terminal
+        self.cor_aviso = "#f85149"      # Vermelho erro/alerta
+        self.cor_amarelo = "#d29922"    # Amarelo alerta
 
-  sys.stdout.write(cor)
-  for letra in texto:
-    sys.stdout.write(letra)
-    sys.stdout.flush()
-    time.sleep(velocidade)
-  sys.stdout.write(RESET + "\n")
+        # Estado da História (veio do historia.py)
+        self.estado_jogo = historia.criar_estado_inicial()
+        
+        self.criar_componentes()
+        self.carregar_cena_atual()
 
+    def criar_componentes(self):
+        # Título da Janela
+        self.lbl_header = tk.Label(
+            self.root, 
+            text="> SISTEMA OPERACIONAL NEXUS v2.0 // PROTOCOLO ORÁCULO", 
+            bg=self.cor_bg, 
+            fg=self.cor_destaque, 
+            font=("Consolas", 14, "bold")
+        )
+        self.lbl_header.pack(pady=10)
 
-def exibir_cabecalho(titulo):
-  limpar_tela()
-  print(f"{CIANO}{'=' * 60}")
-  print(f"{NEGRITO} SISTEMA OPERACIONAL NEXUS v2.0 // {titulo}{RESET}{CIANO}")
-  print(f"{'=' * 60}{RESET}")
-  exibir_status()
+        # Quadro do Terminal (História)
+        self.frame_terminal = tk.Frame(self.root, bg=self.cor_card, bd=1, relief="solid")
+        self.frame_terminal.pack(fill="both", expand=True, padx=20, pady=5)
 
+        self.txt_terminal = tk.Text(
+            self.frame_terminal, 
+            bg="#010409", 
+            fg=self.cor_texto, 
+            font=("Consolas", 11),
+            insertbackground="white",
+            state="disabled",
+            bd=0,
+            wrap="word"
+        )
+        self.txt_terminal.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-def exibir_status():
-  horas = ESTADO_JOGO["tempo_restante"]
-  dante = ESTADO_JOGO["confianca_dante"]
-  print(
-      f"{AMARELO}[STATUS] Tempo Restante: {horas}h | Confiança em Dante:"
-      f" {dante}%{RESET}"
-  )
-  print(f"{CIANO}{'-' * 60}{RESET}\n")
+        scrollbar = tk.Scrollbar(self.frame_terminal, command=self.txt_terminal.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.txt_terminal.config(yscrollcommand=scrollbar.set)
 
+        # Área de Botões da História (Criados dinamicamente)
+        self.frame_opcoes = tk.Frame(self.root, bg=self.cor_bg)
+        self.frame_opcoes.pack(fill="x", padx=20, pady=5)
 
-def menu_pistas():
-  exibir_cabecalho("BANCO DE DADOS DE PISTAS (MOCK)")
+        # Painel Inferior: Ferramentas de Investigação
+        self.frame_ferramentas = tk.Frame(self.root, bg=self.cor_card, bd=1, relief="solid")
+        self.frame_ferramentas.pack(fill="x", padx=20, pady=10)
 
-  pistas = ESTADO_JOGO["pistas"]
-  if not pistas:
-    print(f"{VERMELHO}Nenhuma pista encontrada no banco de dados.{RESET}")
-  else:
-    for titulo, descricao in pistas.items():
-      print(f"{VERDE}[*] {NEGRITO}{titulo}{RESET}{VERDE}: {descricao}{RESET}")
-      time.sleep(0.1)
-  print(f"\n{CIANO}{'-' * 60}{RESET}")
-  input(f"\n{AMARELO}Pressione ENTER para retornar ao menu...{RESET}")
+        lbl_tools = tk.Label(
+            self.frame_ferramentas, 
+            text="[ MÓDULOS DE INVESTIGAÇÃO ]", 
+            bg=self.cor_card, 
+            fg=self.cor_amarelo, 
+            font=("Consolas", 9, "bold")
+        )
+        lbl_tools.pack(anchor="w", padx=10, pady=2)
 
+        # Botão 1: Ver Personagens (Chama investigacao.py)
+        self.btn_personagem = tk.Button(
+            self.frame_ferramentas,
+            text="Buscar Personagem",
+            bg="#21262d",
+            fg=self.cor_texto,
+            font=("Consolas", 9, "bold"),
+            relief="flat",
+            command=self.acao_consultar_personagem
+        )
+        self.btn_personagem.pack(side="left", padx=10, pady=5)
 
-def menu_configuracoes():
-  while True:
-    exibir_cabecalho("CONFIGURAÇÕES DE INTERFACE")
-    print("1. Velocidade do Texto: Rápida")
-    print("2. Velocidade do Texto: Normal")
-    print("3. Velocidade do Texto: Instantânea")
-    print("4. Voltar")
+        # Botão 2: Inventário (Chama investigacao.py)
+        self.btn_inventario = tk.Button(
+            self.frame_ferramentas,
+            text="Ver Inventário",
+            bg="#21262d",
+            fg=self.cor_destaque,
+            font=("Consolas", 9, "bold"),
+            relief="flat",
+            command=self.acao_ver_inventario
+        )
+        self.btn_inventario.pack(side="left", padx=5, pady=5)
 
-    opcao = input(f"\n{NEGRITO}Selecione uma opção (1-4): {RESET}").strip()
+        # Botão 3: Escanear Pista (Chama investigacao.py)
+        self.btn_buscar_pista = tk.Button(
+            self.frame_ferramentas,
+            text="Escanear Pista (1 a 4)",
+            bg="#21262d",
+            fg=self.cor_amarelo,
+            font=("Consolas", 9, "bold"),
+            relief="flat",
+            command=self.acao_escanear_pista
+        )
+        self.btn_buscar_pista.pack(side="left", padx=5, pady=5)
 
-    if opcao == "1":
-      ESTADO_JOGO["velocidade_texto"] = 0.005
-      digitar_texto("[CONFIG] Velocidade alterada para RÁPIDA.", VERDE)
-    elif opcao == "2":
-      ESTADO_JOGO["velocidade_texto"] = 0.03
-      digitar_texto("[CONFIG] Velocidade alterada para NORMAL.", VERDE)
-    elif opcao == "3":
-      ESTADO_JOGO["velocidade_texto"] = 0.0
-      digitar_texto("[CONFIG] Velocidade alterada para INSTANTÂNEA.", VERDE)
-    elif opcao == "4":
-      break
-    else:
-      print(f"{VERMELHO}[ERRO] Opção inválida!{RESET}")
-      time.sleep(1)
+    def escrever_no_terminal(self, texto, limpar=False):
+        """Escreve o texto dentro da caixa cinza do terminal."""
+        self.txt_terminal.config(state="normal")
+        if limpar:
+            self.txt_terminal.delete("1.0", "end")
+        self.txt_terminal.insert("end", texto + "\n\n")
+        self.txt_terminal.see("end")
+        self.txt_terminal.config(state="disabled")
 
+    def carregar_cena_atual(self):
+        """Carrega a história do capitulo do historia.py"""
+        cena_id = self.estado_jogo["cena_atual"]
+        cap = historia.CAPITULOS.get(cena_id)
 
-def menu_investigacao():
-  while True:
-    exibir_cabecalho("TERMINAL DE INVESTIGAÇÃO - CAPÍTULO 1")
-    print("1. Acessar Logs do Antigo Centro de Dados")
-    print("2. Interceptar Mensagem Criptografada (03h17)")
-    print("3. Analisar Perfil: Dante Moreau")
-    print("4. Voltar ao Menu Principal")
+        # Limpa botões de escolhas anteriores
+        for widget in self.frame_opcoes.winfo_children():
+            widget.destroy()
 
-    opcao = input(f"\n{NEGRITO}Selecione um nó de dados (1-4): {RESET}").strip()
+        if not cap:
+            self.escrever_no_terminal("=== FIM DA DEMONSTRAÇÃO ===", limpar=True)
+            return
 
-    if opcao == "1":
-      limpar_tela()
-      exibir_cabecalho("LOGS // CENTRO DE DADOS")
-      digitar_texto(
-          "Acessando servidores antigos da NEXUS...", VERDE, velocidade=0.01
-      )
-      digitar_texto(
-          "Alerta: Arquivos da ordem de desligamento do ORÁCULO foram"
-          " apagados.",
-          VERMELHO,
-      )
-      digitar_texto(
-          "Registros indicam intervenção direta da diretoria antes do"
-          " incidente público.",
-          CIANO,
-      )
-      input(f"\n{AMARELO}Pressione ENTER para continuar...{RESET}")
-    elif opcao == "2":
-      limpar_tela()
-      exibir_cabecalho("MENSAGEM CRIPTOGRAFADA")
-      digitar_texto(
-          "'PHANTOM, eles apagaram os arquivos, mas esqueceram da verdade...'",
-          VERDE,
-      )
-      digitar_texto(
-          "'O ORÁCULO não falhou. Ele fez exatamente para o que foi criado.'",
-          AMARELO,
-      )
-      input(f"\n{AMARELO}Pressione ENTER para continuar...{RESET}")
-    elif opcao == "3":
-      limpar_tela()
-      exibir_cabecalho("PERFIL // DANTE MOREAU")
-      digitar_texto("Status: Investigador Independente / Hacker", CIANO)
-      digitar_texto(
-          "Nota: Possui acessos de nível corporativo não explicados.", AMARELO
-      )
-      input(f"\n{AMARELO}Pressione ENTER para continuar...{RESET}")
-    elif opcao == "4":
-      break
-    else:
-      print(f"{VERMELHO}[ERRO] Opção inválida!{RESET}")
-      time.sleep(1)
+        # Exibe o texto da história
+        conteudo = f"--- {cap['titulo'].upper()} ---\n\n{cap['texto']}"
+        self.escrever_no_terminal(conteudo, limpar=True)
 
+        # Cria os botões com as opções da história
+        if cap["opcoes"]:
+            lbl_escolha = tk.Label(
+                self.frame_opcoes, 
+                text="SELECIONE SUA AÇÃO:", 
+                bg=self.cor_bg, 
+                fg=self.cor_destaque, 
+                font=("Consolas", 10, "bold")
+            )
+            lbl_escolha.pack(anchor="w", pady=2)
 
-def menu_principal():
-  while True:
-    exibir_cabecalho("MENU PRINCIPAL")
-    print("1. Iniciar Investigação (Terminal Nexus)")
-    print("2. Banco de Pistas Coletadas")
-    print("3. Opções de Acessibilidade")
-    print("4. Desconectar (Sair)")
+            for num_opcao, desc in cap["opcoes"].items():
+                btn = tk.Button(
+                    self.frame_opcoes,
+                    text=f"[{num_opcao}] {desc}",
+                    bg="#21262d",
+                    fg="#c9d1d9",
+                    font=("Consolas", 10),
+                    anchor="w",
+                    justify="left",
+                    relief="flat",
+                    activebackground="#30363d",
+                    activeforeground=self.cor_destaque,
+                    command=lambda o=num_opcao: self.tomar_decisao(o)
+                )
+                btn.pack(fill="x", pady=2)
+        else:
+            self.escrever_no_terminal("\n[ FIM DA DEMONSTRAÇÃO DA SPRINT ]")
 
-    opcao = input(f"\n{NEGRITO}Escolha uma opção (1-4): {RESET}").strip()
+    def tomar_decisao(self, opcao):
+        """Avança a história quando clica num botão."""
+        cena_atual = self.estado_jogo["cena_atual"]
+        proxima_cena = historia.processar_escolha(cena_atual, opcao, self.estado_jogo)
+        self.estado_jogo["cena_atual"] = proxima_cena
+        self.carregar_cena_atual()
 
-    if opcao == "1":
-      menu_investigacao()
-    elif opcao == "2":
-      menu_pistas()
-    elif opcao == "3":
-      menu_configuracoes()
-    elif opcao == "4":
-      limpar_tela()
-      digitar_texto(
-          "\nDesconectando do Protocolo ORÁCULO... Até logo, PHANTOM.",
-          VERDE,
-          0.02,
-      )
-      break
-    else:
-      print(f"{VERMELHO}\n[ERRO] Opção inválida! Digite entre 1 e 4.{RESET}")
-      time.sleep(1)
+    # --- AÇÕES DOS BOTÕES DE INVESTIGAÇÃO ---
 
+    def acao_consultar_personagem(self):
+        nome = simpledialog.askstring("NEXUS DB", "Digite o nome (alex, dante, karla, helena, oraculo):")
+        if nome:
+            resultado = investigacao.buscar_personagem(nome)
+            self.escrever_no_terminal(f">> CONSULTA DE PERSONAGEM:\n{resultado}")
+
+    def acao_ver_inventario(self):
+        texto_inv = investigacao.exibir_inventario_texto()
+        self.escrever_no_terminal(f">> {texto_inv}")
+
+    def acao_escanear_pista(self):
+        doc_id = simpledialog.askinteger("Scanner", "Digite o ID do documento (1, 2, 3 ou 4):")
+        if doc_id:
+            resultado = investigacao.encontrar_documento_por_id(doc_id)
+            self.escrever_no_terminal(f">> SCANNER: {resultado}")
 
 if __name__ == "__main__":
-  menu_principal()
+    root = tk.Tk()
+    app = SistemaNexusGUI(root)
+    root.mainloop()
